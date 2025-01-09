@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swiss Rounds Grouping</title>
+    <script src="https://unpkg.com/vue@3"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        .group-container {
+            margin-top: 20px;
+        }
+
+        .round-header {
+            font-weight: bold;
+            cursor: pointer;
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #f4f4f4;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .group {
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+        }
+
+        .group table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .group table, th, td {
+            border: 1px solid #ddd;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 8px;
+        }
+
+        th {
+            background-color: #f4f4f4;
+        }
+
+        button {
+            padding: 8px 12px;
+            font-size: 14px;
+            margin-top: 10px;
+            cursor: pointer;
+            border: none;
+            background-color: #007bff;
+            color: white;
+            border-radius: 4px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        input[type="number"] {
+            padding: 6px;
+            font-size: 14px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 80px;
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <h1>Swiss Rounds Grouping</h1>
+    <!-- 操作按钮 -->
+    <div class="action-buttons">
+        <button @click="generateGroups">Generate Groups</button>
+        <button @click="saveAllRounds">Save All Rounds</button>
+        <button @click="navigateToPlayer">Go to Player Page</button>
+    </div>
+
+    <!-- 每一轮分组 -->
+    <div v-for="(round, roundIndex) in rounds" :key="roundIndex" class="round-container">
+        <!-- 轮次标题 -->
+        <div class="round-header" @click="toggleRound(roundIndex)">
+            Round {{ round.roundNumber }}
+            <span>(Click to {{ round.expanded ? 'Collapse' : 'Expand' }})</span>
+        </div>
+
+        <!-- 展开后的分组内容 -->
+        <div v-if="round.expanded" class="round-content">
+            <div v-for="group in round.groups" :key="group.groupId" class="group">
+                <!-- 分组标题 -->
+                <h3 class="group-title">Group {{ group.groupId }}</h3>
+
+                <!-- 玩家表格 -->
+                <table class="group-table">
+                    <thead>
+                    <tr>
+                        <th>Player Name</th>
+                        <th>Raw Score</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr v-for="player in group.players" :key="player.name">
+                        <td>{{ player.name }}</td>
+                        <td>
+                            <input v-model.number="player.rawScore" type="number" />
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+
+                <!-- 保存按钮 -->
+                <button class="save-group-button" @click="saveGroup(group)">Save Group</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script>
+    const app = Vue.createApp({
+        data() {
+            return {
+                apiUrl: "http://localhost:8080/api/groups", // 后端 API 地址
+                rounds: [], // 存储每轮的分组信息
+                currentRound: 0, // 当前轮次
+            };
+        },
+        methods: {
+            navigateToPlayer() {
+                window.location.href = "http://localhost:8080/player.html";
+            },
+            // 页面加载时获取已有分组信息
+            async loadExistingRounds() {
+                try {
+                    const response = await fetch(`${this.apiUrl}/existing`);
+                    if (!response.ok) {
+                        throw new Error("Failed to load existing rounds");
+                    }
+
+                    const data = await response.json();
+
+                    // 使用后端返回的数据格式初始化轮次和分组信息
+                    this.currentRound = data.currentRound || 0;
+                    this.rounds = data.rounds.map(round => ({
+                        roundNumber: round.roundNumber,
+                        expanded: false, // 默认折叠
+                        groups: round.groups.map(group => ({
+                            groupId: group.groupId,
+                            roundNumber: group.roundNumber,
+                            players: [
+                                {
+                                    name: group.player1Name,
+                                    rawScore: group.player1RawScore,
+                                    convertedScore: group.player1ConvertedScore,
+                                },
+                                {
+                                    name: group.player2Name,
+                                    rawScore: group.player2RawScore,
+                                    convertedScore: group.player2ConvertedScore,
+                                },
+                                {
+                                    name: group.player3Name,
+                                    rawScore: group.player3RawScore,
+                                    convertedScore: group.player3ConvertedScore,
+                                },
+                                {
+                                    name: group.player4Name,
+                                    rawScore: group.player4RawScore,
+                                    convertedScore: group.player4ConvertedScore,
+                                },
+                            ],
+                        })),
+                    }));
+                } catch (error) {
+                    console.error("Error loading existing rounds:", error);
+                    alert("Failed to load existing rounds. Please try again later.");
+                }
+            },
+
+            // 生成分组
+            async generateGroups() {
+                this.currentRound++;
+                const endpoint = this.currentRound === 1 ? "/random" : "/swiss";
+                const response = await fetch(`${this.apiUrl}${endpoint}`);
+                const newRoundGroups = await response.json();
+
+                this.rounds.push({
+                    roundNumber: this.currentRound,
+                    expanded: true, // 默认展开
+                    groups: newRoundGroups.map((group, index) => ({
+                        groupId: index + 1,
+                        roundNumber: this.currentRound,
+                        players: group.map(player => ({
+                            ...player,
+                            rawScore: 0 // 初始素点
+                        }))
+                    }))
+                });
+            },
+
+            // 折叠/展开每轮分组
+            toggleRound(roundIndex) {
+                this.rounds[roundIndex].expanded = !this.rounds[roundIndex].expanded;
+            },
+
+            // 转换马点公式
+            convertScore(rawScore) {
+                return rawScore * 1.5 + 10; // 示例公式，可根据实际需求调整
+            },
+
+            // 保存分组信息
+            async saveGroup(group) {
+                try {
+                    // 向后端发送计算马点请求
+                    const response = await fetch("http://localhost:8080/api/groups/calculate-points", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(group.players), // 发送当前组的玩家数据
+                    });
+
+                    if (!response.ok) {
+                        alert("Failed to calculate points. Please try again.");
+                        return;
+                    }
+
+                    // 获取计算结果
+                    const updatedPlayers = await response.json();
+
+                    // 更新当前组的玩家数据
+                    group.players = updatedPlayers;
+                    console.log(updatedPlayers);
+                    // 弹出确认框
+                    const confirmMessage = updatedPlayers
+                        .map(player => `${player.name}: ${player.calculatedPoints.toFixed(2)}`)
+                        .join("\n");
+
+                    const confirmed = confirm(`Please confirm the calculated points:\n\n${confirmMessage}`);
+                    if (!confirmed) return;
+
+                    const groupData = {
+                        id: group.groupId, // 对应后端的 `id`
+                        roundNumber: group.roundNumber,
+                        groupId: group.groupId,
+                        player1Name: group.players[0]?.name || null,
+                        player1RawScore: group.players[0]?.rawScore || 0,
+                        player1ConvertedScore: group.players[0]?.calculatedPoints || 0,
+                        player2Name: group.players[1]?.name || null,
+                        player2RawScore: group.players[1]?.rawScore || 0,
+                        player2ConvertedScore: group.players[1]?.calculatedPoints || 0,
+                        player3Name: group.players[2]?.name || null,
+                        player3RawScore: group.players[2]?.rawScore || 0,
+                        player3ConvertedScore: group.players[2]?.calculatedPoints || 0,
+                        player4Name: group.players[3]?.name || null,
+                        player4RawScore: group.players[3]?.rawScore || 0,
+                        player4ConvertedScore: group.players[3]?.calculatedPoints || 0,
+                    };
+                    console.log(groupData);
+
+                    // 保存到后端（保存结果 API，可根据需求实现）
+                    const saveResponse = await fetch("http://localhost:8080/api/groups/save", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(groupData),
+                    });
+
+                    if (saveResponse.ok) {
+                        alert("Group scores saved successfully!");
+                    } else {
+                        alert("Failed to save group scores.");
+                    }
+                } catch (error) {
+                    console.error("Error saving group:", error);
+                    alert("An error occurred while saving the group.");
+                }
+            }
+            ,
+
+            // 保存所有轮次
+            async saveAllRounds() {
+                const allRounds = this.rounds.flatMap(round =>
+                    round.groups.flatMap(group =>
+                        group.players.map(player => ({
+                            name: player.name,
+                            rawScore: player.rawScore,
+                            dummy: player.dummy // 保留 dummy 标志
+                        }))
+                    )
+                );
+
+                const response = await fetch(`${this.apiUrl}/save-all`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(allRounds),
+                });
+
+                if (response.ok) {
+                    alert("All rounds saved successfully!");
+                } else {
+                    alert("Failed to save all rounds.");
+                }
+            },
+        },
+        mounted() {
+            this.loadExistingRounds(); // 加载已有分组信息
+        },
+    });
+
+    app.mount("#app");
+</script>
+</body>
+</html>

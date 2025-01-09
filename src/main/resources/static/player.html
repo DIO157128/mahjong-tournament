@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Player Management</title>
+    <script src="https://unpkg.com/vue@3"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 8px;
+        }
+
+        th {
+            background-color: #f4f4f4;
+        }
+
+        button {
+            padding: 8px 12px;
+            font-size: 16px;
+            margin-right: 10px;
+            cursor: pointer;
+            border: none;
+            background-color: #007bff;
+            color: white;
+            border-radius: 4px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        input[type="text"], input[type="number"] {
+            padding: 6px;
+            font-size: 14px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 150px;
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+    <h1>Player Management</h1>
+    <div>
+        <input v-model="newPlayerName" placeholder="Enter player name">
+        <button @click="addPlayer">Add Player</button>
+        <button @click="sortByTotalScore">Sort by Total Score</button>
+        <button @click="sortById">Sort by ID</button>
+        <button @click="navigateToGroup">Go to Group Page</button>
+    </div>
+
+    <table>
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Total Score</th>
+            <th>Actions</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr v-for="player in players" :key="player.id">
+            <td>{{ player.id }}</td>
+            <td>
+                <input v-if="player.isEditing" v-model="player.name" type="text">
+                <span v-else>{{ player.name }}</span>
+            </td>
+            <td>
+                <input v-if="player.isEditing" v-model.number="player.totalScore" type="number">
+                <span v-else>{{ player.totalScore.toFixed(2) }}</span>
+            </td>
+            <td>
+                <button v-if="!player.isEditing" @click="editPlayer(player)">Edit</button>
+                <button v-if="player.isEditing" @click="savePlayer(player)">Save</button>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+
+<script>
+    const app = Vue.createApp({
+        data() {
+            return {
+                apiUrl: "http://localhost:8080/api/players", // 后端 API 地址
+                players: [], // 玩家列表
+                newPlayerName: "", // 新玩家的名字
+            };
+        },
+        methods: {
+            navigateToGroup() {
+                window.location.href = "http://localhost:8080/group.html";
+            },
+            // 获取所有玩家
+            async fetchPlayers() {
+                try {
+                    const response = await fetch(this.apiUrl);
+                    const data = await response.json();
+                    this.players = data.map(player => ({
+                        ...player,
+                        isEditing: false, // 是否处于编辑模式
+                    }));
+                    this.sortById(); // 默认按 ID 排序
+                } catch (error) {
+                    console.error("Error fetching players:", error);
+                }
+            },
+
+            // 添加新玩家
+            async addPlayer() {
+                if (!this.newPlayerName.trim()) {
+                    alert("Player name cannot be empty!");
+                    return;
+                }
+
+                const newPlayer = { name: this.newPlayerName, totalScore: 0.0 };
+                try {
+                    const response = await fetch(this.apiUrl, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(newPlayer),
+                    });
+
+                    if (response.ok) {
+                        alert("Player added successfully!");
+                        this.newPlayerName = ""; // 清空输入框
+                        this.fetchPlayers(); // 刷新玩家列表
+                    } else {
+                        alert("Failed to add player.");
+                    }
+                } catch (error) {
+                    console.error("Error adding player:", error);
+                }
+            },
+
+            // 按总分排序
+            sortByTotalScore() {
+                this.players.sort((a, b) => b.totalScore - a.totalScore);
+            },
+
+            // 按 ID 排序
+            sortById() {
+                this.players.sort((a, b) => a.id - b.id);
+            },
+
+            // 启动编辑模式
+            editPlayer(player) {
+                player.isEditing = true;
+            },
+
+            // 保存修改后的玩家数据
+            async savePlayer(player) {
+                try {
+                    const response = await fetch(`${this.apiUrl}/${player.id}`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            name: player.name,
+                            totalScore: player.totalScore,
+                        }),
+                    });
+
+                    if (response.ok) {
+                        alert("Player updated successfully!");
+                        player.isEditing = false;
+                    } else {
+                        alert("Failed to update player.");
+                    }
+                } catch (error) {
+                    console.error("Error updating player:", error);
+                }
+            },
+        },
+        mounted() {
+            this.fetchPlayers(); // 初始化时获取玩家列表
+        },
+    });
+
+    app.mount("#app");
+</script>
+</body>
+</html>
