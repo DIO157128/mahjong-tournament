@@ -169,7 +169,7 @@ public class GroupService {
         // 计算马点
         for (CalculatePlayer player : players) {
             double rankPoints = calculateRankPoints(player.getRank());
-            double placementPoints = (player.getRawScore() - 25000) / 1000.0;
+            double placementPoints = (player.getRawScore() - 30000) / 1000.0;
             double totalPoints = rankPoints + placementPoints;
 
             player.setCalculatedPoints(totalPoints);
