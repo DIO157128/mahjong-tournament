@@ -132,7 +132,7 @@ public class GroupService {
     // 创建分组并处理非 4 倍数的情况
     private List<List<Player>> createGroups(List<Player> players) {
         int groupSize = 4;
-
+        players.removeIf(Player::isSleeping);
         // 处理非 4 倍数的情况
         int remainder = players.size() % groupSize;
         if (remainder == 1) {

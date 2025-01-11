@@ -1,5 +1,6 @@
 package com.ste1la.mahjongtournament.Model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 /**
@@ -15,4 +16,6 @@ public class Player {
     private String school;   // 玩家所属学校
     private double totalScore = 0.0f; // 玩家总计得分（支持小数）
     private boolean isDummy = false; // 是否是 dummy 玩家
+    @JsonProperty("isSleeping")
+    private boolean isSleeping = false;
 }

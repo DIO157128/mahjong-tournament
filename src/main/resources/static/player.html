@@ -105,6 +105,7 @@
             <th>Name</th>
             <th>School</th>
             <th>Total Score</th>
+            <th>Leaving</th>
             <th>Actions</th>
         </tr>
         </thead>
@@ -124,12 +125,21 @@
                 <span v-else>{{ player.totalScore.toFixed(2) }}</span>
             </td>
             <td>
+                <select v-if="player.isEditing" v-model="player.isSleeping">
+                    <option :value="true">Yes</option>
+                    <option :value="false">No</option>
+                </select>
+                <span v-else>{{ player.isSleeping ? "Yes" : "No" }}</span>
+            </td>
+            <td>
                 <button v-if="!player.isEditing" @click="editPlayer(player)">Edit</button>
                 <button v-if="player.isEditing" @click="savePlayer(player)">Save</button>
             </td>
         </tr>
         </tbody>
     </table>
+
+
 
     <!-- 模态框 -->
     <div v-if="isAddPlayerModalOpen" class="modal">
@@ -230,19 +240,21 @@
                             name: player.name,
                             school: player.school,
                             totalScore: player.totalScore,
+                            isSleeping: player.isSleeping,
                         }),
                     });
 
                     if (response.ok) {
                         alert("Player updated successfully!");
-                        player.isEditing = false;
+                        player.isEditing = false; // 退出编辑模式
                     } else {
                         alert("Failed to update player.");
                     }
                 } catch (error) {
                     console.error("Error updating player:", error);
                 }
-            },
+            }
+            ,
         },
         mounted() {
             this.fetchPlayers(); // 初始化时获取玩家列表

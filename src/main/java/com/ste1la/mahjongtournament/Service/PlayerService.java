@@ -31,11 +31,12 @@ public class PlayerService {
         return playerDAO.selectAllPlayers();
     }
 
-    public void updatePlayerScore(Long id, String name, String school, double totalScore) {
+    public void updatePlayerScore(Long id, String name, String school, boolean isSleeping, double totalScore) {
         Player player = playerDAO.selectPlayerById(id);
         if (player != null) {
             player.setName(name);
             player.setSchool(school);
+            player.setSleeping(isSleeping);
             player.setTotalScore(totalScore);
             playerDAO.updatePlayerScore(player);
         }
