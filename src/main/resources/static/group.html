@@ -309,6 +309,14 @@
             // 保存分组信息
             async saveGroup(group) {
                 try {
+                    // 计算四名玩家的素点总和
+                    const totalRawScore = group.players.reduce((sum, player) => sum + (player.rawScore || 0), 0);
+                    console.log(totalRawScore);
+                    // 检查总和是否为 100000
+                    if (totalRawScore !== 100000) {
+                        alert(`The total raw score of the group should be 100000. Current total: ${totalRawScore}`);
+                    }
+
                     // 向后端发送计算马点请求
                     const response = await fetch("http://localhost:8080/api/groups/calculate-points", {
                         method: "POST",
@@ -327,6 +335,7 @@
                     // 更新当前组的玩家数据
                     group.players = updatedPlayers;
                     console.log(updatedPlayers);
+
                     // 弹出确认框
                     const confirmMessage = updatedPlayers
                         .map(player => `${player.name}: ${player.calculatedPoints.toFixed(2)}`)
@@ -370,7 +379,8 @@
                     console.error("Error saving group:", error);
                     alert("An error occurred while saving the group.");
                 }
-            },
+            }
+            ,
         },
         mounted() {
             this.loadExistingRounds(); // 加载已有分组信息

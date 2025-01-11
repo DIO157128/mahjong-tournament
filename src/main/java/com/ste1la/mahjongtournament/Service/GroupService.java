@@ -167,22 +167,48 @@ public class GroupService {
     public List<CalculatePlayer> calculateGroupPoints(List<CalculatePlayer> players) {
         // 按素点降序排名
         players.sort(Comparator.comparingInt(CalculatePlayer::getRawScore).reversed());
+
         // 分配排名
         for (int i = 0; i < players.size(); i++) {
             players.get(i).setRank(i + 1);
         }
 
         // 计算马点
-        for (CalculatePlayer player : players) {
-            double rankPoints = calculateRankPoints(player.getRank());
-            double placementPoints = (player.getRawScore() - 30000) / 1000.0;
-            double totalPoints = rankPoints + placementPoints;
+        Map<Integer, List<CalculatePlayer>> scoreGroups = new HashMap<>();
 
-            player.setCalculatedPoints(totalPoints);
+        // 按rawScore分组，记录分数相同的玩家
+        for (CalculatePlayer player : players) {
+            scoreGroups
+                    .computeIfAbsent(player.getRawScore(), k -> new ArrayList<>())
+                    .add(player);
+        }
+
+        for (List<CalculatePlayer> group : scoreGroups.values()) {
+            if (group.size() > 1) {
+                // 计算共享马点
+                double totalSharedPoints = group.stream()
+                        .mapToDouble(player -> calculateRankPoints(player.getRank()) +
+                                (player.getRawScore() - 30000) / 1000.0)
+                        .sum();
+
+                double sharedPointsPerPlayer = totalSharedPoints / group.size();
+
+                // 设置共享马点
+                for (CalculatePlayer player : group) {
+                    player.setCalculatedPoints(sharedPointsPerPlayer);
+                }
+            } else {
+                // 如果没有共享，正常计算马点
+                CalculatePlayer player = group.get(0);
+                double rankPoints = calculateRankPoints(player.getRank());
+                double placementPoints = (player.getRawScore() - 30000) / 1000.0;
+                player.setCalculatedPoints(rankPoints + placementPoints);
+            }
         }
 
         return players;
     }
+
 
     /**
      * 根据排名分配排名分
