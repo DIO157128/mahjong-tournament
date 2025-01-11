@@ -81,7 +81,6 @@
     <!-- 操作按钮 -->
     <div class="action-buttons">
         <button @click="generateGroups">Generate Groups</button>
-        <button @click="saveAllRounds">Save All Rounds</button>
         <button @click="navigateToPlayer">Go to Player Page</button>
     </div>
 
@@ -99,26 +98,32 @@
                 <!-- 分组标题 -->
                 <h3 class="group-title">Group {{ group.groupId }}</h3>
 
-                <!-- 玩家表格 -->
-                <table class="group-table">
-                    <thead>
-                    <tr>
-                        <th>Player Name</th>
-                        <th>Raw Score</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <tr v-for="player in group.players" :key="player.name">
-                        <td>{{ player.name }}</td>
-                        <td>
-                            <input v-model.number="player.rawScore" type="number" />
-                        </td>
-                    </tr>
-                    </tbody>
-                </table>
+                <div v-if="group.idleMessage">
+                    <p>{{ group.idleMessage }}</p> <!-- 显示玩家空闲文本 -->
+                </div>
+                <div v-else>
+                    <table class="group-table">
+                        <thead>
+                        <tr>
+                            <th>Position</th>
+                            <th>Player Name</th>
+                            <th>Raw Score</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr v-for="(player, playerIndex) in group.players" :key="player.name">
+                            <td>{{ getPosition(playerIndex) }}</td>
+                            <td>{{ player.name }}</td>
+                            <td>
+                                <input v-model.number="player.rawScore" type="number" />
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                    <!-- 保存按钮 -->
+                    <button class="save-group-button" @click="saveGroup(group)">Save Group</button>
+                </div>
 
-                <!-- 保存按钮 -->
-                <button class="save-group-button" @click="saveGroup(group)">Save Group</button>
             </div>
         </div>
     </div>
@@ -138,6 +143,10 @@
             navigateToPlayer() {
                 window.location.href = "http://localhost:8080/player.html";
             },
+            getPosition(playerIndex) {
+                const positions = ["E", "S", "W", "N"]; // 东南西北
+                return positions[playerIndex % positions.length];
+            },
             // 页面加载时获取已有分组信息
             async loadExistingRounds() {
                 try {
@@ -153,69 +162,149 @@
                     this.rounds = data.rounds.map(round => ({
                         roundNumber: round.roundNumber,
                         expanded: false, // 默认折叠
-                        groups: round.groups.map(group => ({
-                            groupId: group.groupId,
-                            roundNumber: group.roundNumber,
-                            players: [
-                                {
-                                    name: group.player1Name,
-                                    rawScore: group.player1RawScore,
-                                    convertedScore: group.player1ConvertedScore,
-                                },
-                                {
-                                    name: group.player2Name,
-                                    rawScore: group.player2RawScore,
-                                    convertedScore: group.player2ConvertedScore,
-                                },
-                                {
-                                    name: group.player3Name,
-                                    rawScore: group.player3RawScore,
-                                    convertedScore: group.player3ConvertedScore,
-                                },
-                                {
-                                    name: group.player4Name,
-                                    rawScore: group.player4RawScore,
-                                    convertedScore: group.player4ConvertedScore,
-                                },
-                            ],
-                        })),
+                        groups: round.groups.map(group => {
+                            const isIdle =
+                                group.player1Name &&
+                                !group.player2Name &&
+                                !group.player3Name &&
+                                !group.player4Name;
+
+                            if (isIdle) {
+                                return {
+                                    groupId: group.groupId,
+                                    roundNumber: group.roundNumber,
+                                    idleMessage: `Player ${group.player1Name} will be idle this round`,
+                                    players: [],
+                                };
+                            }
+
+                            return {
+                                groupId: group.groupId,
+                                roundNumber: group.roundNumber,
+                                players: [
+                                    {
+                                        name: group.player1Name,
+                                        rawScore: group.player1RawScore,
+                                        convertedScore: group.player1ConvertedScore,
+                                    },
+                                    {
+                                        name: group.player2Name,
+                                        rawScore: group.player2RawScore,
+                                        convertedScore: group.player2ConvertedScore,
+                                    },
+                                    {
+                                        name: group.player3Name,
+                                        rawScore: group.player3RawScore,
+                                        convertedScore: group.player3ConvertedScore,
+                                    },
+                                    {
+                                        name: group.player4Name,
+                                        rawScore: group.player4RawScore,
+                                        convertedScore: group.player4ConvertedScore,
+                                    },
+                                ],
+                            };
+                        }),
                     }));
                 } catch (error) {
                     console.error("Error loading existing rounds:", error);
                     alert("Failed to load existing rounds. Please try again later.");
                 }
-            },
+            }
+            ,
 
             // 生成分组
             async generateGroups() {
-                this.currentRound++;
-                const endpoint = this.currentRound === 1 ? "/random" : "/swiss";
-                const response = await fetch(`${this.apiUrl}${endpoint}`);
-                const newRoundGroups = await response.json();
+                try {
+                    this.currentRound++;
+                    const endpoint = this.currentRound === 1 ? "/random" : "/swiss";
+                    const response = await fetch(`${this.apiUrl}${endpoint}`);
+                    const newRoundGroups = await response.json();
 
-                this.rounds.push({
-                    roundNumber: this.currentRound,
-                    expanded: true, // 默认展开
-                    groups: newRoundGroups.map((group, index) => ({
-                        groupId: index + 1,
+                    // 构造新的分组
+                    const newRound = {
                         roundNumber: this.currentRound,
-                        players: group.map(player => ({
-                            ...player,
-                            rawScore: 0 // 初始素点
-                        }))
-                    }))
-                });
-            },
+                        expanded: true, // 默认展开
+                        groups: newRoundGroups.map((group, index) => {
+                            // 如果组中只有一个玩家
+                            if (group.length === 1) {
+                                return {
+                                    groupId: index + 1,
+                                    roundNumber: this.currentRound,
+                                    players: [
+                                        {
+                                            ...group[0],
+                                            rawScore: 0, // 素点设置为 0
+                                            convertedScore: 25, // 马点设置为 25
+                                        },
+                                    ],
+                                };
+                            }
+
+                            // 正常处理多玩家的组
+                            return {
+                                groupId: index + 1,
+                                roundNumber: this.currentRound,
+                                players: group.map(player => ({
+                                    ...player,
+                                    rawScore: 0, // 初始素点
+                                })),
+                            };
+                        }),
+                    };
+
+                    // 将新轮次添加到 rounds 数组
+                    this.rounds.push(newRound);
+
+                    // 遍历每个分组并直接发送 API 请求保存
+                    for (const group of newRound.groups) {
+                        const groupData = {
+                            id: group.groupId, // 对应后端的 `id`
+                            roundNumber: group.roundNumber,
+                            groupId: group.groupId,
+                            player1Name: group.players[0]?.name || null,
+                            player1RawScore: group.players[0]?.rawScore || 0,
+                            player1ConvertedScore: group.players[0]?.convertedScore || 0,
+                            player2Name: group.players[1]?.name || null,
+                            player2RawScore: group.players[1]?.rawScore || 0,
+                            player2ConvertedScore: group.players[1]?.convertedScore || 0,
+                            player3Name: group.players[2]?.name || null,
+                            player3RawScore: group.players[2]?.rawScore || 0,
+                            player3ConvertedScore: group.players[2]?.convertedScore || 0,
+                            player4Name: group.players[3]?.name || null,
+                            player4RawScore: group.players[3]?.rawScore || 0,
+                            player4ConvertedScore: group.players[3]?.convertedScore || 0,
+                        };
+
+                        console.log("Saving group to backend:", groupData);
+
+                        const saveResponse = await fetch("http://localhost:8080/api/groups/save", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify(groupData),
+                        });
+
+                        if (!saveResponse.ok) {
+                            console.error(`Failed to save group ${group.groupId} in round ${group.roundNumber}`);
+                            alert(`Failed to save group ${group.groupId} in round ${group.roundNumber}`);
+                            return; // 如果保存失败，停止后续保存
+                        }
+                    }
+
+                    alert(`Round ${this.currentRound} generated and saved to the database.`);
+                } catch (error) {
+                    console.error("Error generating and saving groups:", error);
+                    alert("An error occurred while generating and saving groups.");
+                }
+            }
+
+            ,
 
             // 折叠/展开每轮分组
             toggleRound(roundIndex) {
                 this.rounds[roundIndex].expanded = !this.rounds[roundIndex].expanded;
             },
 
-            // 转换马点公式
-            convertScore(rawScore) {
-                return rawScore * 1.5 + 10; // 示例公式，可根据实际需求调整
-            },
 
             // 保存分组信息
             async saveGroup(group) {
@@ -280,32 +369,6 @@
                 } catch (error) {
                     console.error("Error saving group:", error);
                     alert("An error occurred while saving the group.");
-                }
-            }
-            ,
-
-            // 保存所有轮次
-            async saveAllRounds() {
-                const allRounds = this.rounds.flatMap(round =>
-                    round.groups.flatMap(group =>
-                        group.players.map(player => ({
-                            name: player.name,
-                            rawScore: player.rawScore,
-                            dummy: player.dummy // 保留 dummy 标志
-                        }))
-                    )
-                );
-
-                const response = await fetch(`${this.apiUrl}/save-all`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(allRounds),
-                });
-
-                if (response.ok) {
-                    alert("All rounds saved successfully!");
-                } else {
-                    alert("Failed to save all rounds.");
                 }
             },
         },

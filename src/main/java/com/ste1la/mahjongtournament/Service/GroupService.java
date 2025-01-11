@@ -58,6 +58,9 @@ public class GroupService {
         if (!group.getPlayer1Name().toLowerCase().contains("dummy player")) {
             System.out.println(playerDAO.updateTotalScoreByName(group.getPlayer1Name(), -group.getPlayer1ConvertedScore()));
         }
+        if (group.getPlayer2Name()==null){
+            return;
+        }
         if (!group.getPlayer2Name().toLowerCase().contains("dummy player")) {
             playerDAO.updateTotalScoreByName(group.getPlayer2Name(), -group.getPlayer2ConvertedScore());
         }
@@ -77,6 +80,9 @@ public class GroupService {
     private void addNewScoresToPlayers(Group group) {
         if (!group.getPlayer1Name().toLowerCase().contains("dummy")) {
             playerDAO.updateTotalScoreByName(group.getPlayer1Name(), group.getPlayer1ConvertedScore());
+        }
+        if (group.getPlayer2Name()==null){
+            return;
         }
         if (!group.getPlayer2Name().toLowerCase().contains("dummy")) {
             playerDAO.updateTotalScoreByName(group.getPlayer2Name(), group.getPlayer2ConvertedScore());
@@ -151,16 +157,16 @@ public class GroupService {
         List<List<Player>> groups = new ArrayList<>();
         for (int i = 0; i < players.size(); i += groupSize) {
             int end = Math.min(i + groupSize, players.size());
-            groups.add(new ArrayList<>(players.subList(i, end)));
+            List<Player> group = players.subList(i, end);
+            Collections.shuffle(group);
+            groups.add(group);
         }
-
         return groups;
     }
 
     public List<CalculatePlayer> calculateGroupPoints(List<CalculatePlayer> players) {
         // 按素点降序排名
         players.sort(Comparator.comparingInt(CalculatePlayer::getRawScore).reversed());
-
         // 分配排名
         for (int i = 0; i < players.size(); i++) {
             players.get(i).setRank(i + 1);

@@ -1,5 +1,5 @@
-CREATE SCHEMA MAHJONG;
-USE MAHJONG;
+CREATE SCHEMA mahjong_tournament;
+USE mahjong_tournament;
 CREATE TABLE player (
                         id BIGINT AUTO_INCREMENT PRIMARY KEY, -- 玩家ID，主键
                         name VARCHAR(100) NOT NULL UNIQUE,   -- 玩家姓名，必须唯一

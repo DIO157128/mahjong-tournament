@@ -9,7 +9,7 @@ import java.util.List;
 public interface PlayerDAO {
 
     // 插入新玩家
-    @Insert("INSERT INTO player (name, total_score) VALUES (#{name}, #{totalScore})")
+    @Insert("INSERT INTO player (name, school, total_score) VALUES (#{name}, #{school}, #{totalScore})")
     @Options(useGeneratedKeys = true, keyProperty = "id")
     void insertPlayer(Player player);
 
@@ -18,6 +18,7 @@ public interface PlayerDAO {
     @Results(id = "one", value = {
             @Result(column = "id", property = "id"),
             @Result(column = "name", property = "name"),
+            @Result(column = "school", property = "school"),
             @Result(column = "total_score", property = "totalScore"),
     })
     Player selectPlayerById(Long id);
@@ -27,12 +28,13 @@ public interface PlayerDAO {
     @Results(id = "all", value = {
             @Result(column = "id", property = "id"),
             @Result(column = "name", property = "name"),
+            @Result(column = "school", property = "school"),
             @Result(column = "total_score", property = "totalScore"),
     })
     List<Player> selectAllPlayers();
 
     // 更新玩家的总计得分
-    @Update("UPDATE player SET total_score = #{totalScore}, name = #{name} WHERE id = #{id}")
+    @Update("UPDATE player SET total_score = #{totalScore}, name = #{name}, school = #{school} WHERE id = #{id}")
     void updatePlayerScore(Player player);
 
     // 删除玩家

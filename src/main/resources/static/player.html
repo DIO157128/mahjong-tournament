@@ -50,7 +50,41 @@
             font-size: 14px;
             border: 1px solid #ddd;
             border-radius: 4px;
-            width: 150px;
+            width: 200px;
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            width: 400px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.25);
+        }
+
+        .modal-content h2 {
+            margin: 0 0 15px 0;
+        }
+
+        .modal-content input {
+            display: block;
+            margin-bottom: 10px;
+            width: 100%;
+        }
+
+        .modal-content button {
+            margin-right: 10px;
         }
     </style>
 </head>
@@ -58,8 +92,7 @@
 <div id="app">
     <h1>Player Management</h1>
     <div>
-        <input v-model="newPlayerName" placeholder="Enter player name">
-        <button @click="addPlayer">Add Player</button>
+        <button @click="openAddPlayerModal">Add Player</button>
         <button @click="sortByTotalScore">Sort by Total Score</button>
         <button @click="sortById">Sort by ID</button>
         <button @click="navigateToGroup">Go to Group Page</button>
@@ -70,6 +103,7 @@
         <tr>
             <th>ID</th>
             <th>Name</th>
+            <th>School</th>
             <th>Total Score</th>
             <th>Actions</th>
         </tr>
@@ -82,6 +116,10 @@
                 <span v-else>{{ player.name }}</span>
             </td>
             <td>
+                <input v-if="player.isEditing" v-model="player.school" type="text">
+                <span v-else>{{ player.school }}</span>
+            </td>
+            <td>
                 <input v-if="player.isEditing" v-model.number="player.totalScore" type="number">
                 <span v-else>{{ player.totalScore.toFixed(2) }}</span>
             </td>
@@ -92,6 +130,17 @@
         </tr>
         </tbody>
     </table>
+
+    <!-- 模态框 -->
+    <div v-if="isAddPlayerModalOpen" class="modal">
+        <div class="modal-content">
+            <h2>Add Player</h2>
+            <input v-model="newPlayerName" placeholder="Enter player name">
+            <input v-model="newPlayerSchool" placeholder="Enter player school">
+            <button @click="confirmAddPlayer">Add</button>
+            <button @click="closeAddPlayerModal">Cancel</button>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -101,11 +150,49 @@
                 apiUrl: "http://localhost:8080/api/players", // 后端 API 地址
                 players: [], // 玩家列表
                 newPlayerName: "", // 新玩家的名字
+                newPlayerSchool: "", // 新玩家的学校
+                isAddPlayerModalOpen: false, // 控制模态框是否显示
             };
         },
         methods: {
             navigateToGroup() {
                 window.location.href = "http://localhost:8080/group.html";
+            },
+            // 打开添加玩家模态框
+            openAddPlayerModal() {
+                this.isAddPlayerModalOpen = true;
+            },
+            // 关闭添加玩家模态框
+            closeAddPlayerModal() {
+                this.isAddPlayerModalOpen = false;
+                this.newPlayerName = "";
+                this.newPlayerSchool = "";
+            },
+            // 确认添加玩家
+            async confirmAddPlayer() {
+                if (!this.newPlayerName.trim() || !this.newPlayerSchool.trim()) {
+                    alert("Player name and school cannot be empty!");
+                    return;
+                }
+
+                const newPlayer = { name: this.newPlayerName, school: this.newPlayerSchool, totalScore: 0.0 };
+                try {
+                    const response = await fetch(this.apiUrl, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(newPlayer),
+                    });
+
+                    if (response.ok) {
+                        alert("Player added successfully!");
+                        this.closeAddPlayerModal(); // 关闭模态框
+                        this.fetchPlayers(); // 刷新玩家列表
+                    } else {
+                        alert("Failed to add player.");
+                    }
+                } catch (error) {
+                    console.error("Error adding player:", error);
+                }
             },
             // 获取所有玩家
             async fetchPlayers() {
@@ -121,49 +208,18 @@
                     console.error("Error fetching players:", error);
                 }
             },
-
-            // 添加新玩家
-            async addPlayer() {
-                if (!this.newPlayerName.trim()) {
-                    alert("Player name cannot be empty!");
-                    return;
-                }
-
-                const newPlayer = { name: this.newPlayerName, totalScore: 0.0 };
-                try {
-                    const response = await fetch(this.apiUrl, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(newPlayer),
-                    });
-
-                    if (response.ok) {
-                        alert("Player added successfully!");
-                        this.newPlayerName = ""; // 清空输入框
-                        this.fetchPlayers(); // 刷新玩家列表
-                    } else {
-                        alert("Failed to add player.");
-                    }
-                } catch (error) {
-                    console.error("Error adding player:", error);
-                }
-            },
-
             // 按总分排序
             sortByTotalScore() {
                 this.players.sort((a, b) => b.totalScore - a.totalScore);
             },
-
             // 按 ID 排序
             sortById() {
                 this.players.sort((a, b) => a.id - b.id);
             },
-
             // 启动编辑模式
             editPlayer(player) {
                 player.isEditing = true;
             },
-
             // 保存修改后的玩家数据
             async savePlayer(player) {
                 try {
@@ -172,6 +228,7 @@
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
                             name: player.name,
+                            school: player.school,
                             totalScore: player.totalScore,
                         }),
                     });

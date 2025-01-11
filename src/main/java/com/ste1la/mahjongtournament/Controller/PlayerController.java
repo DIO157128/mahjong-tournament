@@ -42,7 +42,7 @@ public class PlayerController {
 
     @PutMapping("/{id}")
     public String updatePlayerScore(@PathVariable Long id,@RequestBody Player player) {
-        playerService.updatePlayerScore(id,player.getName(),player.getTotalScore());
+        playerService.updatePlayerScore(id,player.getName(),player.getSchool(), player.getTotalScore());
         System.out.println("Player %s updated successfully!".formatted(id));
         return "Player score updated successfully!";
     }
