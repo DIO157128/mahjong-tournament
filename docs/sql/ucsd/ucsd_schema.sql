@@ -4,7 +4,7 @@ CREATE TABLE player (
                         id BIGINT AUTO_INCREMENT PRIMARY KEY, -- 玩家ID，主键
                         name VARCHAR(100) NOT NULL UNIQUE,   -- 玩家姓名，必须唯一
                         school VARCHAR(100) NOT NULL,
-                        total_score INT DEFAULT 0 ,           -- 玩家总计得分
+                        total_score DECIMAL(10, 2) DEFAULT 0.00 ,           -- 玩家总计得分
                         is_sleeping BOOLEAN DEFAULT false
 );
 CREATE TABLE game_group (
